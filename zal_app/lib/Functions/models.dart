@@ -197,7 +197,10 @@ class Gpu {
 class ComputerData {
   late Map<String, dynamic> rawData;
   late Ram ram; late Cpu cpu; late Gpu gpu; late List<Storage> storages; late List<Monitor> monitors; late Motherboard motherboard; late Battery battery; late List<NetworkInterface> networkInterfaces;
-  List<String>? availableGpus; List<TaskmanagerProcess>? taskmanagerProcesses; NetworkSpeed? networkSpeed; late bool isRunningAsAdminstrator; late Map<String, List<dynamic>> charts;
+  List<String>? availableGpus; List<TaskmanagerProcess>? taskmanagerProcesses; NetworkSpeed? networkSpeed; 
+  late bool isRunningAsAdminstrator; 
+  late bool isRunningAsAdministrator; // Supporting both spellings to end the build errors
+  late Map<String, List<dynamic>> charts;
   
   factory ComputerData.fromJson(dynamic data) => ComputerData.construct(data);
 
@@ -219,8 +222,10 @@ class ComputerData {
     charts = parsedData.containsKey("charts") ? Map<String, List<dynamic>>.from(parsedData['charts']) : {};
     final computerData = parsedData['computerData'] ?? parsedData;
     
-    // Matched spelling to existing UI Widgets
-    isRunningAsAdminstrator = computerData['isRunningAsAdminstrator'] ?? computerData['isRunningAsAdministrator'] ?? computerData['isAdminstrator'] ?? computerData['isAdmin'] ?? false;
+    // Assign to both variables to support different UI files
+    final adminStatus = computerData['isRunningAsAdministrator'] ?? computerData['isRunningAsAdminstrator'] ?? computerData['isAdminstrator'] ?? computerData['isAdmin'] ?? false;
+    isRunningAsAdminstrator = adminStatus;
+    isRunningAsAdministrator = adminStatus;
     
     ram = computerData['ramData'] != null ? Ram.fromMap(computerData['ramData']) : Ram.nullData();
     cpu = computerData['cpuData'] != null ? Cpu.fromMap(computerData['cpuData']) : Cpu.nullData();
