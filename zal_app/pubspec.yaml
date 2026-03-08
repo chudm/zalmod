@@ -65,7 +65,7 @@ dependencies:
   flutter_local_notifications: ^18.0.0
   fl_chart: ^0.69.0
   introduction_screen: ^3.1.12
-  peerdart: ^0.6.0
+  peerdart: ^0.5.6
   logger: ^2.0.2+1
   color_print: ^1.0.3
   sidebarx: ^0.17.1
