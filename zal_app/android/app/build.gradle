@@ -32,6 +32,7 @@ apply plugin: 'com.google.gms.google-services'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
 android {
+    namespace "com.hedihadi.zal"
     compileSdkVersion 34
     ndkVersion flutter.ndkVersion
 
@@ -86,6 +87,4 @@ dependencies {
       coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
           implementation 'androidx.window:window:1.0.0'
     implementation 'androidx.window:window-java:1.0.0'
-
-
 }
