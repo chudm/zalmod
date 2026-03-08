@@ -20,6 +20,7 @@ import 'package:zal/firebase_options.dart';
 import 'Functions/theme.dart';
 
 final _revenueCatConfiguration = PurchasesConfiguration(Platform.isAndroid ? 'goog_xokAwGykaqKIgLAIODrNHTTMnxF' : 'appl_eqiIImrSxvAweggWipqxMOgYidj');
+
 Future<void> main() async {
   ///  Gemini.init(apiKey: 'AIzaSyBsKXTuGncs19jZmUxalT7g9RLfp6hTtBU');
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +32,14 @@ Future<void> main() async {
 
   MobileAds.instance.initialize();
   Purchases.configure(_revenueCatConfiguration);
-  await dotenv.load(fileName: ".env");
+  
+  // THE FIX: Catch the missing .env file error so it doesn't kill the app
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Warning: .env file not found. App will proceed without it.");
+  }
+
   //for some reason this is needed to allow error printing
   FlutterError.demangleStackTrace = (StackTrace stack) {
     if (stack is stack_trace.Trace) return stack.vmTrace;
