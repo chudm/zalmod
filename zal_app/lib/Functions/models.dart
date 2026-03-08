@@ -97,17 +97,39 @@ class Cpu {
     SplayTreeMap<String, double?> clocks = SplayTreeMap<String, double?>();
     if (map['clocks'] != null) {
       for (final clock in Map<String, dynamic>.from(map['clocks']).entries) {
-        clocks[clock.key] = clock.value == "NaN" ? null : clock.value?.toDouble();
+        // Universal Fix: Handle potential "NaN" strings or nulls from any CPU brand
+        var val = clock.value;
+        if (val == "NaN" || val == null) {
+          clocks[clock.key] = null;
+        } else {
+          clocks[clock.key] = double.tryParse(val.toString());
+        }
       }
     }
+    
+    // UNIVERSAL FUZZY SEARCH: This works for any CPU brand (Intel/AMD/etc)
     double? temp = map['temperature']?.toDouble();
-    if (temp == null || temp <= 0.1) {
+    if (temp == null || temp <= 0.1 || temp.isNaN || temp.isInfinite) {
       map.forEach((key, value) {
         String k = key.toLowerCase();
-        if ((k.contains("temp") || k.contains("tctl") || k.contains("tdie")) && value is num && value > 5) temp = value.toDouble();
+        // Scanning for common naming conventions across all monitoring libraries
+        if ((k.contains("temp") || k.contains("package") || k.contains("die") || k.contains("tctl") || k.contains("core")) && value is num && value > 5 && value < 120) {
+          temp = value.toDouble();
+        }
       });
     }
-    return Cpu(name: map['name'] ?? '', temperature: temp, power: map['power']?.toDouble() ?? 0.0, powers: SplayTreeMap<String, double>.from(map['powers'] ?? {}), clocks: clocks, load: map['load']?.toDouble() ?? 0.0, loads: SplayTreeMap<String, double>.from(map['loads'] ?? {}), voltages: SplayTreeMap<String, double>.from(map['voltages'] ?? {}), cpuInfo: map['cpuInfo'] != null ? CpuInfo.fromMap(map['cpuInfo']) : null);
+    
+    return Cpu(
+      name: map['name'] ?? 'Unknown CPU', 
+      temperature: (temp == null || temp!.isNaN || temp!.isInfinite) ? 0.0 : temp, 
+      power: map['power']?.toDouble() ?? 0.0, 
+      powers: SplayTreeMap<String, double>.from(map['powers'] ?? {}), 
+      clocks: clocks, 
+      load: map['load']?.toDouble() ?? 0.0, 
+      loads: SplayTreeMap<String, double>.from(map['loads'] ?? {}), 
+      voltages: SplayTreeMap<String, double>.from(map['voltages'] ?? {}), 
+      cpuInfo: map['cpuInfo'] != null ? CpuInfo.fromMap(map['cpuInfo']) : null
+    );
   }
 
   factory Cpu.nullData() => Cpu(name: "-1", temperature: -1, power: -1, powers: SplayTreeMap(), clocks: SplayTreeMap(), load: -1, loads: SplayTreeMap(), voltages: SplayTreeMap(), cpuInfo: null);
@@ -138,14 +160,31 @@ class Gpu {
   double voltage;
   int fps;
   Gpu({required this.name, required this.coreSpeed, required this.memorySpeed, required this.fanSpeedPercentage, required this.corePercentage, required this.power, required this.dedicatedMemoryUsed, required this.temperature, required this.voltage, required this.fps});
+  
   factory Gpu.fromMap(Map<String, dynamic> map) {
+    // UNIVERSAL FUZZY SEARCH: Works for Nvidia, AMD, and Intel GPUs
     double temp = map['temperature']?.toDouble() ?? 0.0;
-    if (temp >= 250 || temp <= 0) {
+    if (temp.isNaN || temp.isInfinite || temp >= 250 || temp <= 0) {
+      temp = 0.0;
       map.forEach((key, value) {
-        if (key.toLowerCase().contains("temp") && value is num && value < 115) temp = value.toDouble();
+        String k = key.toLowerCase();
+        if ((k.contains("temp") || k.contains("core") || k.contains("hotspot")) && value is num && value > 5 && value < 120) {
+          temp = value.toDouble();
+        }
       });
     }
-    return Gpu(name: map['name'] ?? '', coreSpeed: map['coreSpeed']?.toDouble() ?? 0.0, memorySpeed: map['memorySpeed']?.toDouble() ?? 0.0, fanSpeedPercentage: map['fanSpeedPercentage']?.toDouble() ?? 0.0, corePercentage: map['corePercentage']?.toDouble() ?? 0.0, power: map['power']?.toDouble() ?? 0.0, dedicatedMemoryUsed: map['dedicatedMemoryUsed']?.toDouble() ?? 0.0, temperature: temp, voltage: map['voltage']?.toDouble() ?? 0.0, fps: (map['fps'] ?? 0).round());
+    return Gpu(
+      name: map['name'] ?? 'Unknown GPU', 
+      coreSpeed: map['coreSpeed']?.toDouble() ?? 0.0, 
+      memorySpeed: map['memorySpeed']?.toDouble() ?? 0.0, 
+      fanSpeedPercentage: map['fanSpeedPercentage']?.toDouble() ?? 0.0, 
+      corePercentage: map['corePercentage']?.toDouble() ?? 0.0, 
+      power: map['power']?.toDouble() ?? 0.0, 
+      dedicatedMemoryUsed: map['dedicatedMemoryUsed']?.toDouble() ?? 0.0, 
+      temperature: temp, 
+      voltage: map['voltage']?.toDouble() ?? 0.0, 
+      fps: (map['fps'] ?? 0).round()
+    );
   }
   factory Gpu.nullData() => Gpu(name: "-1", coreSpeed: -1, memorySpeed: -1, fanSpeedPercentage: -1, corePercentage: -1, power: -1, dedicatedMemoryUsed: -1, temperature: -1, voltage: -1, fps: -1);
 }
@@ -154,17 +193,32 @@ class ComputerData {
   late Map<String, dynamic> rawData;
   late Ram ram; late Cpu cpu; late Gpu gpu; late List<Storage> storages; late List<Monitor> monitors; late Motherboard motherboard; late Battery battery; late List<NetworkInterface> networkInterfaces;
   List<String>? availableGpus; List<TaskmanagerProcess>? taskmanagerProcesses; NetworkSpeed? networkSpeed; late bool isRunningAsAdminstrator; late Map<String, List<dynamic>> charts;
+  
   ComputerData.construct(dynamic data) {
     Map<String, dynamic> parsedData;
     try {
-      if (data is String) parsedData = jsonDecode(data);
-      else if (data is Map) parsedData = Map<String, dynamic>.from(data);
-      else parsedData = jsonDecode(data.toString().replaceAll("'", '"'));
-    } catch (e) { parsedData = jsonDecode(data.toString().replaceAll("'", '"')); }
+      if (data is String) {
+        parsedData = jsonDecode(data);
+      } else if (data is Map) {
+        parsedData = Map<String, dynamic>.from(data);
+      } else {
+        parsedData = jsonDecode(data.toString().replaceAll("'", '"'));
+      }
+    } catch (e) { 
+      try {
+        parsedData = jsonDecode(data.toString().replaceAll("'", '"'));
+      } catch (e2) {
+        parsedData = {};
+      }
+    }
+    
     rawData = parsedData;
     charts = parsedData.containsKey("charts") ? Map<String, List<dynamic>>.from(parsedData['charts']) : {};
     final computerData = parsedData['computerData'] ?? parsedData;
-    isRunningAsAdminstrator = computerData['isAdminstrator'] ?? false;
+    
+    // Safety Fallback for "Adminstrator" spelling used in the original app
+    isRunningAsAdminstrator = computerData['isAdminstrator'] ?? computerData['isRunningAsAdminstrator'] ?? computerData['isAdmin'] ?? false;
+    
     ram = computerData['ramData'] != null ? Ram.fromMap(computerData['ramData']) : Ram.nullData();
     cpu = computerData['cpuData'] != null ? Cpu.fromMap(computerData['cpuData']) : Cpu.nullData();
     gpu = computerData['gpuData'] != null ? Gpu.fromMap(computerData['gpuData']) : Gpu.nullData();
@@ -172,6 +226,7 @@ class ComputerData {
     battery = computerData['batteryData'] != null ? Battery.fromMap(computerData['batteryData']) : Battery.nullData();
     storages = computerData['storagesData'] != null ? List<Map<String, dynamic>>.from(computerData['storagesData']).map((e) => Storage.fromMap(e)).toList() : [Storage.nullData()];
     monitors = computerData['monitorsData'] != null ? List<Map<String, dynamic>>.from(computerData['monitorsData']).map((e) => Monitor.fromMap(e)).toList() : [Monitor.nullData()];
+    
     if (computerData['primaryNetworkSpeed'] != null) networkSpeed = NetworkSpeed.fromMap(computerData["primaryNetworkSpeed"]);
     networkInterfaces = computerData.containsKey("networkInterfaces") ? List<Map<String, dynamic>>.from(computerData['networkInterfaces']).map((e) => NetworkInterface.fromMap(e)).toList() : [];
     if (computerData.containsKey("taskmanagerData") && computerData['taskmanagerData'] != null) taskmanagerProcesses = Map<String, dynamic>.from(computerData['taskmanagerData']).entries.map((e) => TaskmanagerProcess.fromMap(e)).toList();
