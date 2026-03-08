@@ -32,10 +32,6 @@ class ComputerAddress {
   factory ComputerAddress.fromMap(Map<String, dynamic> map) => ComputerAddress(name: map['name'] as String, ip: map['ip'] as String);
   String toJson() => json.encode(toMap());
   factory ComputerAddress.fromJson(String source) => ComputerAddress.fromMap(json.decode(source) as Map<String, dynamic>);
-  @override
-  bool operator ==(covariant ComputerAddress other) => other.name == name && other.ip == ip;
-  @override
-  int get hashCode => name.hashCode ^ ip.hashCode;
 }
 
 class ConnectionEstablishment {
@@ -75,7 +71,7 @@ class SocketObject {
   SocketObject(String localSocketAddress, {Map<String, dynamic> extraQueries = const {}}) {
     socket = io(localSocketAddress, <String, dynamic>{'transports': ['websocket'], 'query': {...extraQueries, 'EIO': '4'}});
   }
-  sendData(String to, String data) => socket.emit(to, {'data': data});
+  sendMessage(String to, String data) => socket.emit(to, {'data': data});
 }
 
 class SocketData {
@@ -208,6 +204,7 @@ class NotificationData {
   NotificationData({this.key, this.childKey, this.factorType, this.factorValue, this.secondsThreshold, this.suspended = false});
   NotificationData copyWith({NewNotificationKey? key, NotificationKeyWithUnit? childKey, NewNotificationFactorType? factorType, double? factorValue, int? secondsThreshold, bool? suspended}) => NotificationData(key: key ?? this.key, childKey: childKey ?? this.childKey, factorType: factorType ?? this.factorType, factorValue: factorValue ?? this.factorValue, secondsThreshold: secondsThreshold ?? this.secondsThreshold, suspended: suspended ?? this.suspended);
   String toJson() => json.encode({'key': key?.index, 'childKey': childKey?.toMap(), 'factorType': factorType?.index, 'factorValue': factorValue, 'secondsThreshold': secondsThreshold, 'suspended': suspended});
+  factory NotificationData.fromMap(Map<String, dynamic> map) => NotificationData(key: map['key'] != null ? NewNotificationKey.values[map['key']] : null, childKey: map['childKey'] != null ? NotificationKeyWithUnit.fromMap(map['childKey']) : null, factorType: map['factorType'] != null ? NewNotificationFactorType.values[map['factorType']] : null, factorValue: map['factorValue']?.toDouble(), secondsThreshold: map['secondsThreshold']?.toInt(), suspended: map['suspended'] ?? false);
 }
 
 class FpsData {
@@ -215,6 +212,11 @@ class FpsData {
   FpsData({required this.fpsList, required this.currentFps, required this.fps01Low, required this.fps001Low, required this.averageFps});
   addFps(double data) => fpsList.add(data);
   calculateFps() { /* Logic handled in provider */ }
+}
+
+class FpsRecord {
+  FpsData fpsData; String presetName; String presetDuration; String? note;
+  FpsRecord({required this.fpsData, required this.presetName, required this.presetDuration, this.note});
 }
 
 class ComputerSpecs {
@@ -225,7 +227,6 @@ class ComputerSpecs {
   factory ComputerSpecs.fromJson(String source) { final m = json.decode(source); return ComputerSpecs(motherboardName: m['motherboardName'], ramSize: m['ramSize'], gpuName: m['gpuName'], cpuName: m['cpuName'], storages: List<String>.from(m['storages']), monitors: List<String>.from(m['monitors'])); }
 }
 
-// --- REMAINING BOILERPLATE ---
 class RamPiece { final int capacity; final String manufacturer; final String partNumber; final int clockSpeed; RamPiece({required this.capacity, required this.manufacturer, required this.partNumber, required this.clockSpeed}); factory RamPiece.fromMap(Map<String, dynamic> map) => RamPiece(capacity: map['capacity']?.toInt() ?? 0, manufacturer: map['manufacturer'] ?? '', partNumber: map['partNumber'] ?? '', clockSpeed: map['speed']?.toInt() ?? 0); }
 class Partition { final String driveLetter; final String label; final int size; final int freeSpace; Partition({required this.driveLetter, required this.label, required this.size, required this.freeSpace}); factory Partition.fromMap(Map<String, dynamic> map) => Partition(driveLetter: map['driveLetter'] ?? '', label: map['label'] ?? '', size: map['size']?.toInt() ?? 0, freeSpace: map['freeSpace']?.toInt() ?? 0); }
 class Motherboard { String name; double temperature; Motherboard({required this.name, required this.temperature}); factory Motherboard.fromMap(Map<String, dynamic> map) => Motherboard(name: map['name'] ?? '', temperature: map['temperature']?.toDouble() ?? 0.0); factory Motherboard.nullData() => Motherboard(name: '-1', temperature: -1); }
