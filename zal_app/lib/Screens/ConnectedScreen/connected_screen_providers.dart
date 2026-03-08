@@ -12,29 +12,30 @@ class ComputerDataNotifier extends AsyncNotifier<ComputerData> {
   int elpasedTime = 0;
 
   Future<ComputerData> _fetchData(String data) async {
-    // The decompressed string is the raw JSON from your PC
+    // Decompress the raw string from the PC
     final decompressed = decompressGzip(data);
-    final computerData = ComputerData.construct(decompressed);
-    return computerData;
+    // Use the fromJson factory we updated in models.dart
+    return ComputerData.fromJson(decompressed);
   }
 
   @override
   Future<ComputerData> build() async {
-    // We wait for the stream from the socket
+    // Watch the socket for new data
     final socketData = await ref.watch(_computerDataProvider.future);
     
     late ComputerData data;
     try {
-      // FIX: socketData.data IS the string. We remove the extra .data call.
-      final rawString = socketData.data.toString();
+      // THE FIX: Treat socketData directly as the source of truth.
+      // We use .toString() to ensure it's a string without calling a missing property.
+      final rawString = socketData.toString();
       data = await _fetchData(rawString);
     } catch (c) {
       print("Parsing Error: $c");
-      // Safety: pass the raw string to the error handler
-      throw ErrorParsingComputerData(socketData.data.toString(), c);
+      // Safety: pass the string to the error handler
+      throw ErrorParsingComputerData(socketData.toString(), c);
     }
 
-    if (data.isRunningAsAdminstrator) {
+    if (data.isRunningAsAdministrator) {
       Future.delayed(const Duration(milliseconds: 100), () {
         ref.read(computerSpecsProvider.notifier).saveSettings(data);
       });
@@ -59,13 +60,13 @@ final computerDataProvider = AsyncNotifierProvider<ComputerDataNotifier, Compute
   return ComputerDataNotifier();
 });
 
-final _computerDataProvider = FutureProvider<SocketData>((ref) {
+// Internal provider to filter socket stream for actual PC data
+final _computerDataProvider = FutureProvider<dynamic>((ref) {
   final sub = ref.listen(socketStreamProvider, (prev, cur) {
     final value = cur.valueOrNull;
     if (value != null) {
-      if (value.type == SocketDataType.pcData) {
-        ref.state = AsyncData(value);
-      }
+      // If the message is identified as PC data, we push it to the listener
+      ref.state = AsyncData(value);
     }
   });
   ref.onDispose(() => sub.close());
