@@ -22,9 +22,8 @@ enum NewNotificationFactorType { Higher, Lower }
 enum FileType { file, folder }
 enum FileProviderState { downloading, rebuilding, complete }
 enum MoveFileType { move, copy }
-enum SortFilesBy { nameAscending, nameDescending, sizeAscending, sizeDescending, dateModifiedAscending, dateModifiedDescending, dateCreatedAscending, dateModifiedDescending, dateCreatedAscending, dateCreatedDescending }
+enum SortFilesBy { nameAscending, nameDescending, sizeAscending, sizeDescending, dateModifiedAscending, dateModifiedDescending, dateCreatedAscending, dateCreatedDescending }
 
-// --- Helper for Safety ---
 double _safeDouble(dynamic value) {
   if (value == null) return 0.0;
   if (value is num) {
@@ -115,8 +114,6 @@ class Cpu {
         clocks[clock.key] = _safeDouble(clock.value);
       }
     }
-    
-    // Support for 9700X Sensor Naming
     double? temp = _safeDouble(map['temperature']);
     if (temp <= 0.1) {
       map.forEach((key, value) {
@@ -126,7 +123,6 @@ class Cpu {
         }
       });
     }
-    
     return Cpu(
       name: map['name'] ?? 'Unknown CPU', 
       temperature: temp, 
@@ -168,9 +164,7 @@ class Gpu {
   double voltage;
   int fps;
   Gpu({required this.name, required this.coreSpeed, required this.memorySpeed, required this.fanSpeedPercentage, required this.corePercentage, required this.power, required this.dedicatedMemoryUsed, required this.temperature, required this.voltage, required this.fps});
-  
   factory Gpu.fromMap(Map<String, dynamic> map) {
-    // Support for RTX 5070 Sensor Naming
     double temp = _safeDouble(map['temperature']);
     if (temp >= 250 || temp <= 0) {
       map.forEach((key, value) {
@@ -199,7 +193,7 @@ class Gpu {
 class ComputerData {
   late Map<String, dynamic> rawData;
   late Ram ram; late Cpu cpu; late Gpu gpu; late List<Storage> storages; late List<Monitor> monitors; late Motherboard motherboard; late Battery battery; late List<NetworkInterface> networkInterfaces;
-  List<String>? availableGpus; List<TaskmanagerProcess>? taskmanagerProcesses; NetworkSpeed? networkSpeed; late bool isRunningAsAdminstrator; late Map<String, List<dynamic>> charts;
+  List<String>? availableGpus; List<TaskmanagerProcess>? taskmanagerProcesses; NetworkSpeed? networkSpeed; late bool isRunningAsAdministrator; late Map<String, List<dynamic>> charts;
   
   factory ComputerData.fromJson(dynamic data) => ComputerData.construct(data);
 
@@ -216,13 +210,10 @@ class ComputerData {
     } catch (e) { 
       parsedData = {};
     }
-    
     rawData = parsedData;
     charts = parsedData.containsKey("charts") ? Map<String, List<dynamic>>.from(parsedData['charts']) : {};
     final computerData = parsedData['computerData'] ?? parsedData;
-    
-    isRunningAsAdminstrator = computerData['isAdminstrator'] ?? computerData['isRunningAsAdminstrator'] ?? computerData['isAdmin'] ?? false;
-    
+    isRunningAsAdministrator = computerData['isRunningAsAdministrator'] ?? computerData['isAdminstrator'] ?? computerData['isAdmin'] ?? false;
     ram = computerData['ramData'] != null ? Ram.fromMap(computerData['ramData']) : Ram.nullData();
     cpu = computerData['cpuData'] != null ? Cpu.fromMap(computerData['cpuData']) : Cpu.nullData();
     gpu = computerData['gpuData'] != null ? Gpu.fromMap(computerData['gpuData']) : Gpu.nullData();
@@ -230,12 +221,9 @@ class ComputerData {
     battery = computerData['batteryData'] != null ? Battery.fromMap(computerData['batteryData']) : Battery.nullData();
     storages = computerData['storagesData'] != null ? List<Map<String, dynamic>>.from(computerData['storagesData']).map((e) => Storage.fromMap(e)).toList() : [Storage.nullData()];
     monitors = computerData['monitorsData'] != null ? List<Map<String, dynamic>>.from(computerData['monitorsData']).map((e) => Monitor.fromMap(e)).toList() : [Monitor.nullData()];
-    
     if (computerData['primaryNetworkSpeed'] != null) networkSpeed = NetworkSpeed.fromMap(computerData["primaryNetworkSpeed"]);
     networkInterfaces = computerData.containsKey("networkInterfaces") ? List<Map<String, dynamic>>.from(computerData['networkInterfaces']).map((e) => NetworkInterface.fromMap(e)).toList() : [];
-    if (computerData.containsKey("taskmanagerData") && computerData['taskmanagerData'] != null) {
-      taskmanagerProcesses = Map<String, dynamic>.from(computerData['taskmanagerData']).entries.map((e) => TaskmanagerProcess.fromMap(e)).toList();
-    }
+    if (computerData.containsKey("taskmanagerData") && computerData['taskmanagerData'] != null) taskmanagerProcesses = Map<String, dynamic>.from(computerData['taskmanagerData']).entries.map((e) => TaskmanagerProcess.fromMap(e)).toList();
   }
 }
 
@@ -272,6 +260,7 @@ class FpsData {
   List<double> fpsList; double currentFps; double averageFps; double fps01Low; double fps001Low;
   FpsData({required this.fpsList, required this.currentFps, required this.fps01Low, required this.fps001Low, required this.averageFps});
   addFps(double data) => fpsList.add(data);
+  void calculateFps() {}
 }
 
 class FpsRecord {
