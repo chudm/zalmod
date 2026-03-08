@@ -22,7 +22,7 @@ enum NewNotificationFactorType { Higher, Lower }
 enum FileType { file, folder }
 enum FileProviderState { downloading, rebuilding, complete }
 enum MoveFileType { move, copy }
-enum SortFilesBy { nameAscending, nameDescending, sizeAscending, sizeDescending, dateModifiedAscending, dateModifiedDescending, dateCreatedAscending, dateCreatedDescending }
+enum SortFilesBy { nameAscending, nameDescending, sizeAscending, sizeDescending, dateModifiedAscending, dateModifiedDescending, dateCreatedAscending, dateModifiedDescending, dateCreatedAscending, dateCreatedDescending }
 
 class ComputerAddress {
   String name;
@@ -97,7 +97,6 @@ class Cpu {
     SplayTreeMap<String, double?> clocks = SplayTreeMap<String, double?>();
     if (map['clocks'] != null) {
       for (final clock in Map<String, dynamic>.from(map['clocks']).entries) {
-        // Universal Fix: Handle potential "NaN" strings or nulls from any CPU brand
         var val = clock.value;
         if (val == "NaN" || val == null) {
           clocks[clock.key] = null;
@@ -107,12 +106,10 @@ class Cpu {
       }
     }
     
-    // UNIVERSAL FUZZY SEARCH: This works for any CPU brand (Intel/AMD/etc)
     double? temp = map['temperature']?.toDouble();
     if (temp == null || temp <= 0.1 || temp.isNaN || temp.isInfinite) {
       map.forEach((key, value) {
         String k = key.toLowerCase();
-        // Scanning for common naming conventions across all monitoring libraries
         if ((k.contains("temp") || k.contains("package") || k.contains("die") || k.contains("tctl") || k.contains("core")) && value is num && value > 5 && value < 120) {
           temp = value.toDouble();
         }
@@ -162,7 +159,6 @@ class Gpu {
   Gpu({required this.name, required this.coreSpeed, required this.memorySpeed, required this.fanSpeedPercentage, required this.corePercentage, required this.power, required this.dedicatedMemoryUsed, required this.temperature, required this.voltage, required this.fps});
   
   factory Gpu.fromMap(Map<String, dynamic> map) {
-    // UNIVERSAL FUZZY SEARCH: Works for Nvidia, AMD, and Intel GPUs
     double temp = map['temperature']?.toDouble() ?? 0.0;
     if (temp.isNaN || temp.isInfinite || temp >= 250 || temp <= 0) {
       temp = 0.0;
@@ -194,6 +190,9 @@ class ComputerData {
   late Ram ram; late Cpu cpu; late Gpu gpu; late List<Storage> storages; late List<Monitor> monitors; late Motherboard motherboard; late Battery battery; late List<NetworkInterface> networkInterfaces;
   List<String>? availableGpus; List<TaskmanagerProcess>? taskmanagerProcesses; NetworkSpeed? networkSpeed; late bool isRunningAsAdminstrator; late Map<String, List<dynamic>> charts;
   
+  // ADDED back for backward compatibility with your provider
+  factory ComputerData.fromJson(dynamic data) => ComputerData.construct(data);
+
   ComputerData.construct(dynamic data) {
     Map<String, dynamic> parsedData;
     try {
@@ -216,7 +215,7 @@ class ComputerData {
     charts = parsedData.containsKey("charts") ? Map<String, List<dynamic>>.from(parsedData['charts']) : {};
     final computerData = parsedData['computerData'] ?? parsedData;
     
-    // Safety Fallback for "Adminstrator" spelling used in the original app
+    // Spelling matched to original: isRunningAsAdminstrator
     isRunningAsAdminstrator = computerData['isAdminstrator'] ?? computerData['isRunningAsAdminstrator'] ?? computerData['isAdmin'] ?? false;
     
     ram = computerData['ramData'] != null ? Ram.fromMap(computerData['ramData']) : Ram.nullData();
@@ -292,7 +291,7 @@ class NetworkInterface { final String name; final String description; final bool
 class TaskmanagerProcess { List<int> pids; String name; double memoryUsage; double cpuPercent; Uint8List? icon; TaskmanagerProcess({required this.pids, required this.name, required this.memoryUsage, required this.cpuPercent, this.icon}); factory TaskmanagerProcess.fromMap(MapEntry<String, dynamic> data) => TaskmanagerProcess(pids: List<int>.from(data.value['pids'] ?? []), name: data.key, memoryUsage: data.value['memoryUsage']?.toDouble() ?? 0.0, cpuPercent: data.value['cpuPercent']?.toDouble() ?? 0.0, icon: data.value['icon'] != null ? base64Decode(data.value['icon']) : null); }
 class CpuInfo { String name; String socket; int speed; int cores; int threads; CpuInfo({required this.name, required this.socket, required this.speed, required this.cores, required this.threads}); factory CpuInfo.fromMap(Map<String, dynamic> map) => CpuInfo(name: map['name'] ?? '', socket: map['socket'] ?? '', speed: map['speed']?.toInt() ?? 0, cores: map['cores']?.toInt() ?? 0, threads: map['threads']?.toInt() ?? 0); }
 class NotificationKeyWithUnit { String keyName; String unit; String? displayName; NotificationKeyWithUnit({required this.keyName, required this.unit, this.displayName}); factory NotificationKeyWithUnit.fromMap(Map<String, dynamic> map) => NotificationKeyWithUnit(keyName: map['keyName'] ?? '', unit: map['unit'] ?? '', displayName: map['displayName']); Map<String, dynamic> toMap() => {'keyName': keyName, 'unit': unit, 'displayName': displayName}; }
-class FpsComputerData { final ComputerData computerData; final Map<String, num> highestValues; FpsComputerData({required this.computerData, required this.highestValues}); }
+class FpsComputerData { final ComputerData computerData; final Map<String, num> highestValues; FpsComputerData({required this.highestValues, required this.computerData}); }
 class CpuCoreInfo { double? clock; double? load; double? voltage; double? power; CpuCoreInfo({this.clock, this.load, this.voltage, this.power}); }
 class MoveFileModel { final FileData file; final MoveFileType moveType; MoveFileModel({required this.file, required this.moveType}); }
 class NetworkPrefixIsNull implements Exception {}
