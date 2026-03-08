@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zal/Functions/local_database_manager.dart';
 import 'package:zal/Functions/models.dart';
@@ -11,12 +10,9 @@ class ComputerDataNotifier extends AsyncNotifier<ComputerData> {
   bool isConnectedToServer = false;
   bool isComputerConnected = false;
   int elpasedTime = 0;
+
   Future<ComputerData> _fetchData(String data) async {
-    List<int> utf8Bytes = utf8.encode(data);
-    // Get the length of the byte array
-    int sizeInBytes = utf8Bytes.length;
-    //print("payload 1size: ${sizeInBytes.toSize()}");
-    //print(data);
+    // The decompressed string is the raw JSON from your PC
     final decompressed = decompressGzip(data);
     final computerData = ComputerData.construct(decompressed);
     return computerData;
@@ -24,14 +20,20 @@ class ComputerDataNotifier extends AsyncNotifier<ComputerData> {
 
   @override
   Future<ComputerData> build() async {
-    final webrtcProviderModel = await ref.watch(_computerDataProvider.future);
+    // We wait for the stream from the socket
+    final socketData = await ref.watch(_computerDataProvider.future);
+    
     late ComputerData data;
     try {
-      data = await _fetchData(webrtcProviderModel.data ?? '');
+      // FIX: socketData.data IS the string. We remove the extra .data call.
+      final rawString = socketData.data.toString();
+      data = await _fetchData(rawString);
     } catch (c) {
-      print(c);
-      throw ErrorParsingComputerData(webrtcProviderModel.data?.data ?? '', c);
+      print("Parsing Error: $c");
+      // Safety: pass the raw string to the error handler
+      throw ErrorParsingComputerData(socketData.data.toString(), c);
     }
+
     if (data.isRunningAsAdminstrator) {
       Future.delayed(const Duration(milliseconds: 100), () {
         ref.read(computerSpecsProvider.notifier).saveSettings(data);
@@ -59,8 +61,11 @@ final computerDataProvider = AsyncNotifierProvider<ComputerDataNotifier, Compute
 
 final _computerDataProvider = FutureProvider<SocketData>((ref) {
   final sub = ref.listen(socketStreamProvider, (prev, cur) {
-    if (cur.valueOrNull != null) {
-      if (cur.valueOrNull?.type == SocketDataType.pcData) ref.state = AsyncData(cur.valueOrNull!);
+    final value = cur.valueOrNull;
+    if (value != null) {
+      if (value.type == SocketDataType.pcData) {
+        ref.state = AsyncData(value);
+      }
     }
   });
   ref.onDispose(() => sub.close());
@@ -87,6 +92,7 @@ class ComputerSpecsNotifier extends AsyncNotifier<ComputerSpecs?> {
 final computerSpecsProvider = AsyncNotifierProvider<ComputerSpecsNotifier, ComputerSpecs?>(() {
   return ComputerSpecsNotifier();
 });
+
 final timerProvider = StreamProvider<int>((ref) {
   final stopwatch = Stopwatch()..start();
   return Stream.periodic(const Duration(milliseconds: 1000), (count) {
